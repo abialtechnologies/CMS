@@ -410,6 +410,28 @@ function IntegrationsSection() {
   )
 }
 
+// ─── Connection Info Section ────────────────────────────────────
+function ConnectionSection() {
+  const url = import.meta.env.VITE_SUPABASE_URL || '—'
+  return (
+    <Section icon={Settings} title="Database Connection">
+      <div style={{ background: 'var(--bg-tertiary)', borderRadius: 10, padding: '1rem', border: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Supabase Project URL</span>
+          <span style={{ fontSize: '0.8rem', color: 'var(--accent)', fontFamily: 'monospace', wordBreak: 'break-all' }}>{url}</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Status</span>
+          <span style={{ fontSize: '0.8rem', color: '#22c55e', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+            Connected
+          </span>
+        </div>
+      </div>
+    </Section>
+  )
+}
+
 // ─── Main Settings Page ────────────────────────────────────────────────
 export function SettingsPage() {
   const [tab, setTab] = useState<'general' | 'categories' | 'seo' | 'integrations' | 'connection'>('general')

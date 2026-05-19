@@ -1,0 +1,49 @@
+#!/usr/bin/expect -f
+
+set timeout 300
+set host "187.124.94.209"
+set user "root"
+set pass "Abial@223344"
+
+spawn ssh -o StrictHostKeyChecking=no $user@$host
+
+expect {
+    "password:" { send "$pass\r" }
+    "Password:" { send "$pass\r" }
+}
+
+sleep 2
+
+# Clone or update repo
+send "cd /var/www && ls blog-cms 2>/dev/null && echo 'EXISTS' || echo 'NOTFOUND'\r"
+expect -re {[#$] }
+
+send "if \[ -d /var/www/blog-cms \]; then cd /var/www/blog-cms && git pull origin main; else cd /var/www && git clone https://github.com/abialtechnologies/CMS.git blog-cms; fi\r"
+expect -re {[#$] } { sleep 5 }
+
+# Create .env
+send "cat > /var/www/blog-cms/.env << 'ENVEOF'\r"
+expect -re {>}
+send "VITE_SUPABASE_URL=https://maggkwqdanapyziqbthl.supabase.co\r"
+expect -re {>}
+send "VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1hZ2drd3FkYW5hcHl6aXFidGhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwNjAyODEsImV4cCI6MjA4NTYzNjI4MX0.Gw1dNm5wpb7m3OTqSdc9H4Abi70hTzPZN_xUYmGkVz0\r"
+expect -re {>}
+send "VITE_ALLOWED_EMAIL=gmb1.sheraz@gmail.com\r"
+expect -re {>}
+send "ENVEOF\r"
+expect -re {[#$] }
+
+send "echo '.env created:' && cat /var/www/blog-cms/.env\r"
+expect -re {[#$] }
+
+send "cd /var/www/blog-cms && npm install 2>&1 | tail -5\r"
+expect -re {[#$] } { sleep 60 }
+
+send "cd /var/www/blog-cms && npm run build 2>&1 | tail -10\r"
+expect -re {[#$] } { sleep 60 }
+
+send "ls /var/www/blog-cms/dist/ && echo 'BUILD SUCCESS'\r"
+expect -re {[#$] }
+
+send "exit\r"
+expect eof
