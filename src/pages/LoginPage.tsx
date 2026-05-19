@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Lock, Mail, ShieldCheck, AlertCircle, CheckCircle, ArrowLeft, Loader } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 
 // ─── Security Config ────────────────────────────────────────────────────────
@@ -46,6 +48,8 @@ function formatTime(seconds: number) {
 type View = 'login' | 'forgot' | 'reset-sent'
 
 export function LoginPage() {
+  const navigate = useNavigate()
+  const { session } = useAuth()
   const [view, setView] = useState<View>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -54,6 +58,11 @@ export function LoginPage() {
   const [error, setError] = useState('')
   const [lockoutSecs, setLockoutSecs] = useState(getLockoutRemaining())
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // If already logged in → go straight to dashboard
+  useEffect(() => {
+    if (session) navigate('/', { replace: true })
+  }, [session, navigate])
 
   // Clear any stale lockout on mount (in case of dev restart)
   useEffect(() => {
@@ -121,7 +130,7 @@ export function LoginPage() {
 
     clearAttempts()
     toast.success('Welcome back! 👋')
-    // AuthGuard will auto-redirect to / once session is set
+    navigate('/', { replace: true })
   }
 
   // ── Forgot Password ──────────────────────────────────────────────────────

@@ -1,0 +1,37 @@
+#!/usr/bin/expect -f
+
+set timeout 60
+set host "187.124.94.209"
+set user "root"
+set pass "Abial@223344"
+
+spawn ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=15 $user@$host
+expect { "assword:" { send "$pass\r" } }
+expect { "#" { } "$ " { } }
+sleep 1
+
+# Check what's in sites-enabled
+send "ls -la /etc/nginx/sites-enabled/ && echo '---'\r"
+expect -re {[#$] }
+
+# Check cms.abial.ai config
+send "cat /etc/nginx/sites-available/cms.abial.ai\r"
+expect -re {[#$] }
+
+# Check if certbot modified it
+send "grep -n 'root\|ssl\|server_name' /etc/nginx/sites-available/cms.abial.ai\r"
+expect -re {[#$] }
+
+# Check dist folder exists
+send "ls /var/www/blog-cms/dist/ | head -5 && echo 'DIST OK'\r"
+expect -re {[#$] }
+
+# Check certbot logs
+send "tail -20 /var/log/letsencrypt/letsencrypt.log 2>/dev/null | grep -E 'Successfully|error|Error'\r"
+expect -re {[#$] }
+
+send "curl -sk http://cms.abial.ai | grep -o '<title>[^<]*</title>'\r"
+expect -re {[#$] }
+
+send "exit\r"
+expect eof

@@ -1,0 +1,83 @@
+#!/usr/bin/expect -f
+
+set timeout 300
+set host "187.124.94.209"
+set user "root"
+set pass "Abial@223344"
+
+spawn ssh -o StrictHostKeyChecking=no $user@$host
+expect { "password:" { send "$pass\r" } "Password:" { send "$pass\r" } }
+sleep 2
+
+# Pull latest code
+send "cd /var/www/blog-cms && git pull origin main\r"
+expect -re {[#$] }
+sleep 3
+
+# Build
+send "npm run build 2>&1 | tail -8\r"
+expect -re {[#$] } { sleep 90 }
+
+send "ls /var/www/blog-cms/dist/ && echo '=== BUILD SUCCESS ==='\r"
+expect -re {[#$] }
+
+# Create Nginx config for cms.abial.ai
+send {cat > /etc/nginx/sites-available/cms.abial.ai << 'NGINXEOF'
+server {
+    listen 80;
+    server_name cms.abial.ai;
+
+    root /var/www/blog-cms/dist;
+    index index.html;
+
+    # Security Headers
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+
+    # SPA routing - all routes to index.html
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Cache static assets 1 year
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff2|ttf|woff)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Block hidden files
+    location ~ /\. {
+        deny all;
+        return 404;
+    }
+}
+NGINXEOF
+}
+send "\r"
+expect -re {[#$] }
+
+# Enable site
+send "ln -sf /etc/nginx/sites-available/cms.abial.ai /etc/nginx/sites-enabled/\r"
+expect -re {[#$] }
+
+# Test and reload nginx
+send "nginx -t && systemctl reload nginx && echo '=== NGINX OK ==='\r"
+expect -re {[#$] }
+
+# Check nginx status
+send "systemctl status nginx | head -5\r"
+expect -re {[#$] }
+
+# Install certbot if not present
+send "which certbot || apt install -y certbot python3-certbot-nginx\r"
+expect -re {[#$] } { sleep 30 }
+
+send "echo '=== ALL DONE - Now run SSL ===' \r"
+expect -re {[#$] }
+
+send "exit\r"
+expect eof

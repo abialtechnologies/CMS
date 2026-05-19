@@ -1,0 +1,30 @@
+#!/usr/bin/expect -f
+
+set timeout 120
+set host "187.124.94.209"
+set user "root"
+set pass "Abial@223344"
+
+spawn ssh -o StrictHostKeyChecking=no \
+          -o ServerAliveInterval=15 \
+          -o ServerAliveCountMax=20 \
+          $user@$host
+
+expect { "assword:" { send "$pass\r" } }
+expect { "#" { } "$ " { } }
+sleep 1
+
+# Run certbot for SSL
+send "certbot --nginx -d cms.abial.ai --non-interactive --agree-tos -m gmb1.sheraz@gmail.com --redirect 2>&1\r"
+expect -re {[#$] } { sleep 60 }
+
+# Verify HTTPS
+send "curl -sk https://cms.abial.ai | grep -o '<title>.*</title>' | head -1 && echo 'HTTPS OK'\r"
+expect -re {[#$] }
+
+# Show final nginx config
+send "nginx -t && systemctl status nginx | grep -E 'Active|running' && echo '=== LIVE ==='\r"
+expect -re {[#$] }
+
+send "exit\r"
+expect eof

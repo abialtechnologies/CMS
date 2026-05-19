@@ -1,0 +1,94 @@
+#!/usr/bin/expect -f
+
+set timeout 90
+set host "187.124.94.209"
+set pass "Abial@223344"
+
+spawn ssh -o StrictHostKeyChecking=no \
+          -o PreferredAuthentications=password \
+          -o PubkeyAuthentication=no \
+          -o NumberOfPasswordPrompts=1 \
+          root@$host
+
+expect {
+    -re {[Pp]assword:} {
+        send "$pass\r"
+        exp_continue
+    }
+    "#" { }
+    timeout { puts "TIMEOUT connecting"; exit 1 }
+}
+
+sleep 1
+send "\r"
+expect "#"
+
+# Write proper nginx config manually with SSL placeholders
+send {cat > /etc/nginx/sites-available/cms.abial.ai << 'ENDCONF'
+server {
+    listen 80;
+    server_name cms.abial.ai;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name cms.abial.ai;
+
+    ssl_certificate /etc/letsencrypt/live/cms.abial.ai/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/cms.abial.ai/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    root /var/www/blog-cms/dist;
+    index index.html;
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location ~* \.(js|css|png|jpg|ico|svg|woff2)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    location ~ /\. {
+        deny all;
+    }
+}
+ENDCONF
+}
+send "\r"
+expect "#"
+send "echo 'Config written'\r"
+expect "#"
+
+# Now run certbot to get the actual certificate
+send "certbot certonly --nginx -d cms.abial.ai --non-interactive --agree-tos -m gmb1.sheraz@gmail.com 2>&1\r"
+expect {
+    "Congratulations" { send_user "\n\n=== CERT SUCCESS ===\n" }
+    "Certificate not yet due" { send_user "\n\n=== CERT ALREADY EXISTS ===\n" }
+    "error" { send_user "\n\n=== CERT ERROR ===\n" }
+    "#" { }
+    timeout { send_user "\n\nTIMEOUT\n" }
+}
+sleep 3
+
+# Test nginx
+send "nginx -t 2>&1 && systemctl reload nginx && echo 'NGINX RELOADED'\r"
+expect "#"
+
+# Test HTTPS
+send "curl -sk --max-time 5 https://cms.abial.ai | grep -o '<title>[^<]*</title>'\r"
+expect "#"
+
+send "echo DONE_OK\r"
+expect "#"
+
+send "exit\r"
+expect eof

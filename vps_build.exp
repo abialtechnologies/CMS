@@ -1,0 +1,36 @@
+#!/usr/bin/expect -f
+
+set timeout 60
+set host "187.124.94.209"
+set user "root"
+set pass "Abial@223344"
+
+spawn ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 $user@$host
+expect { "password:" { send "$pass\r" } "Password:" { send "$pass\r" } }
+sleep 2
+
+# Pull latest
+send "cd /var/www/blog-cms && git pull origin main 2>&1\r"
+expect -re {[#$] }
+sleep 3
+
+# Run build in background with nohup
+send "cd /var/www/blog-cms && nohup npm run build > /tmp/build.log 2>&1 &\r"
+expect -re {[#$] }
+send "echo 'Build started in background. PID:' $!\r"
+expect -re {[#$] }
+
+# Wait for build to complete (check every 10s)
+send "echo 'Waiting for build...' && sleep 30 && tail -5 /tmp/build.log\r"
+expect -re {[#$] } { sleep 35 }
+
+send "sleep 30 && tail -5 /tmp/build.log\r"
+expect -re {[#$] } { sleep 35 }
+
+send "ls /var/www/blog-cms/dist/ 2>/dev/null && echo '=== BUILD OK ===' || echo 'Build still running...'\r"
+expect -re {[#$] }
+send "cat /tmp/build.log | tail -10\r"
+expect -re {[#$] }
+
+send "exit\r"
+expect eof
