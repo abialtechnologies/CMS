@@ -73,8 +73,10 @@ export function ResetPasswordPage() {
     }
 
     setDone(true)
-    toast.success('Password updated successfully!')
-    setTimeout(() => navigate('/login', { replace: true }), 2500)
+    toast.success('Password updated! Please log in with your new password.')
+    // Sign out so the session doesn't auto-redirect to dashboard
+    await supabase.auth.signOut()
+    setTimeout(() => navigate('/login', { replace: true }), 2000)
   }
 
   return (

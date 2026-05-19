@@ -12,25 +12,27 @@ spawn ssh -o StrictHostKeyChecking=no \
           -o ServerAliveCountMax=30 \
           root@$host
 
-expect {
-    -re {[Pp]assword:} { send "$pass\r" }
-    timeout { puts "TIMEOUT"; exit 1 }
-}
-
-expect {
-    "#" { }
-    timeout { puts "LOGIN FAILED"; exit 1 }
-}
-
+expect { -re {[Pp]assword:} { send "$pass\r" } timeout { exit 1 } }
+expect { "#" { } timeout { exit 1 } }
 sleep 1
 
-send "cd /var/www/blog-cms && git pull origin main 2>&1\r"
-expect "#" { sleep 5 }
+# Pull latest
+send "cd /var/www/blog-cms && git pull origin main 2>&1 | tail -4\r"
+expect "#"
+sleep 2
 
-send "npm run build 2>&1 | tail -6\r"
+# Add VITE_CMS_URL to .env on VPS
+send "grep -q 'VITE_CMS_URL' /var/www/blog-cms/.env || echo 'VITE_CMS_URL=https://cms.abial.ai' >> /var/www/blog-cms/.env\r"
+expect "#"
+
+send "echo '.env:' && cat /var/www/blog-cms/.env\r"
+expect "#"
+
+# Rebuild
+send "npm run build 2>&1 | tail -3\r"
 expect "#" { sleep 60 }
 
-send "echo '=== VPS UPDATED SUCCESSFULLY ==='\r"
+send "echo '=== UPDATE COMPLETE ==='\r"
 expect "#"
 
 send "exit\r"
