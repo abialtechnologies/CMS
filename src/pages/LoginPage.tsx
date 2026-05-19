@@ -6,11 +6,12 @@ import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 
 // ─── Security Config ────────────────────────────────────────────────────────
-const ALLOWED_EMAIL = (import.meta.env.VITE_ALLOWED_EMAIL || '').toLowerCase().trim()
-const MAX_ATTEMPTS = 5
-const LOCKOUT_MS = 15 * 60 * 1000 // 15 minutes
-const LOCKOUT_KEY = 'cms_lockout'
-const ATTEMPTS_KEY = 'cms_attempts'
+const ALLOWED_EMAIL  = (import.meta.env.VITE_ALLOWED_EMAIL || '').toLowerCase().trim()
+const CMS_URL        = import.meta.env.VITE_CMS_URL || 'https://cms.abial.ai'
+const MAX_ATTEMPTS   = 5
+const LOCKOUT_MS     = 15 * 60 * 1000 // 15 minutes
+const LOCKOUT_KEY    = 'cms_lockout'
+const ATTEMPTS_KEY   = 'cms_attempts'
 
 // ─── Lockout helpers ─────────────────────────────────────────────────────────
 function getLockoutRemaining(): number {
@@ -148,7 +149,7 @@ export function LoginPage() {
 
     setLoading(true)
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(inputEmail, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${CMS_URL}/reset-password`,   // Always points to CMS
     })
     setLoading(false)
 
