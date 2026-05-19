@@ -1,0 +1,36 @@
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { Layout } from './components/Layout'
+import { AuthGuard } from './components/AuthGuard'
+import { AuthProvider } from './context/AuthContext'
+import { DashboardPage } from './pages/DashboardPage'
+import { BlogListPage } from './pages/BlogListPage'
+import { BlogEditorPage } from './pages/BlogEditorPage'
+import { SettingsPage } from './pages/SettingsPage'
+import { ProfilePage } from './pages/ProfilePage'
+import { LoginPage } from './pages/LoginPage'
+import { OAuthCallbackPage } from './pages/OAuthCallbackPage'
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <Routes>
+        {/* Public */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/oauth-callback" element={<OAuthCallbackPage />} />
+
+        {/* Protected — requires login */}
+        <Route element={<AuthGuard />}>
+          <Route element={<Layout />}>
+            <Route path="/" element={<DashboardPage />} />
+            <Route path="/posts" element={<BlogListPage />} />
+            <Route path="/new" element={<BlogEditorPage />} />
+            <Route path="/edit/:id" element={<BlogEditorPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        </Route>
+      </Routes>
+    </AuthProvider>
+  )
+}
