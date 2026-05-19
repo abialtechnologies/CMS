@@ -1,0 +1,29 @@
+#!/usr/bin/expect -f
+
+set timeout 120
+set host "187.124.94.209"
+set pass "Abial@223344"
+
+spawn ssh -o StrictHostKeyChecking=no \
+          -o PreferredAuthentications=password \
+          -o PubkeyAuthentication=no \
+          -o NumberOfPasswordPrompts=1 \
+          root@$host
+
+expect { -re {[Pp]assword:} { send "$pass\r" } timeout { exit 1 } }
+expect { "#" { } timeout { exit 1 } }
+sleep 1
+
+send "cd /var/www/blog-cms && git pull origin main 2>&1 | tail -5\r"
+expect "#"
+sleep 2
+
+send "npm run build 2>&1 | tail -5\r"
+expect { "#" { } timeout { sleep 60 } }
+sleep 3
+
+send "echo '=== DEPLOY DONE ==='\r"
+expect "#"
+
+send "exit\r"
+expect eof

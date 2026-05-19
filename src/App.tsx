@@ -9,13 +9,15 @@ import { SettingsPage } from './pages/SettingsPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { LoginPage } from './pages/LoginPage'
 import { OAuthCallbackPage } from './pages/OAuthCallbackPage'
+import { ResetPasswordPage } from './pages/ResetPasswordPage'
 
 export default function App() {
   return (
     <AuthProvider>
       <Routes>
         {/* Public */}
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/login"          element={<LoginPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/oauth-callback" element={<OAuthCallbackPage />} />
 
         {/* Protected — requires login */}
