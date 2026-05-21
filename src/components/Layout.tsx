@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
-import { PenTool, FileText, Plus, Settings, BarChart3, Menu, X, LogOut, LayoutDashboard } from 'lucide-react'
+import { PenTool, FileText, Plus, Settings, BarChart3, Menu, X, LogOut, LayoutDashboard, Image as ImageIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
@@ -8,6 +8,7 @@ const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: FileText, label: 'All Posts', path: '/posts' },
   { icon: Plus, label: 'New Post', path: '/new' },
+  { icon: ImageIcon, label: 'Media Library', path: '/media' },
 ]
 
 const bottomItems = [
