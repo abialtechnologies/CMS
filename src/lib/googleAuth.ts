@@ -125,6 +125,37 @@ export async function fetchGscData(siteUrl: string) {
   return { analytics: analytics.rows || [], queries: queries.rows || [] }
 }
 
+export async function fetchSeoReportData(siteUrl: string) {
+  const tokens = getTokens('gsc')
+  if (!tokens) throw new Error('Not connected')
+
+  const endDate = new Date().toISOString().split('T')[0]
+  const startDate = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0] // last 30 days
+
+  const headers = { Authorization: `Bearer ${tokens.access_token}`, 'Content-Type': 'application/json' }
+  const apiUrl = `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(siteUrl)}/searchAnalytics/query`
+
+  const fetchDimension = async (dim: string, limit: number) => {
+    const res = await fetch(apiUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ startDate, endDate, dimensions: [dim], rowLimit: limit }),
+    })
+    if (!res.ok) throw new Error(`GSC API error fetching ${dim}`)
+    const data = await res.json()
+    return data.rows || []
+  }
+
+  const [pages, queries, devices, countries] = await Promise.all([
+    fetchDimension('page', 20),
+    fetchDimension('query', 50),
+    fetchDimension('device', 3),
+    fetchDimension('country', 10),
+  ])
+
+  return { pages, queries, devices, countries }
+}
+
 // ── URL Inspection API (check if a URL is indexed) ────────────────────────────
 export async function inspectUrl(url: string, siteUrl: string): Promise<{ isIndexed: boolean; verdict: string; lastCrawl: string | null }> {
   const tokens = getTokens('gsc')

@@ -11,6 +11,7 @@ import { LoginPage } from './pages/LoginPage'
 import { OAuthCallbackPage } from './pages/OAuthCallbackPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { MediaLibraryPage } from './pages/MediaLibraryPage'
+import { SeoReportsPage } from './pages/SeoReportsPage'
 
 export default function App() {
   return (
@@ -29,6 +30,7 @@ export default function App() {
             <Route path="/new" element={<BlogEditorPage />} />
             <Route path="/edit/:id" element={<BlogEditorPage />} />
             <Route path="/media" element={<MediaLibraryPage />} />
+            <Route path="/seo" element={<SeoReportsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="*" element={<Navigate to="/" replace />} />

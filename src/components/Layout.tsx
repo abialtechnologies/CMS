@@ -89,16 +89,22 @@ export function Layout() {
             <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '0 0.75rem', marginBottom: '0.5rem' }}>
               Analytics
             </div>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: '0.75rem',
-              padding: '0.625rem 0.875rem', borderRadius: '0.625rem',
-              color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 500,
-              opacity: 0.5, cursor: 'not-allowed',
-            }}>
+            <Link
+              to="/seo"
+              onClick={() => setMobileOpen(false)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.75rem',
+                padding: '0.625rem 0.875rem', borderRadius: '0.625rem',
+                textDecoration: 'none', marginBottom: '0.25rem',
+                transition: 'all 0.2s',
+                background: location.pathname === '/seo' ? 'linear-gradient(90deg, hsla(0,80%,55%,0.12), hsla(25,95%,53%,0.06))' : 'transparent',
+                color: location.pathname === '/seo' ? 'var(--accent)' : 'var(--text-secondary)',
+                borderLeft: location.pathname === '/seo' ? '2px solid var(--accent)' : '2px solid transparent',
+              }}
+            >
               <BarChart3 size={18} />
-              <span>SEO Reports</span>
-              <span className="badge badge-blue" style={{ marginLeft: 'auto', fontSize: '0.6rem' }}>Soon</span>
-            </div>
+              <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>SEO Reports</span>
+            </Link>
             {bottomItems.map(item => {
               const isActive = location.pathname === item.path
               return (
