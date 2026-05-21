@@ -269,7 +269,7 @@ function SeoDefaultsSection() {
 function IntegrationsSection() {
   const [clientId, setClientId] = useState(getConfig('client_id'))
   const [clientSecret, setClientSecret] = useState(getConfig('client_secret'))
-  const [siteUrl, setSiteUrl] = useState(getConfig('gsc_site_url'))
+  const [siteUrl, setSiteUrl] = useState(getConfig('gsc_site_url') || 'https://abial.ai/')
   const [ga4PropId, setGa4PropId] = useState(getConfig('ga4_property_id'))
   const [gscOk, setGscOk] = useState(isConnected('gsc'))
   const [ga4Ok, setGa4Ok] = useState(isConnected('ga4'))
