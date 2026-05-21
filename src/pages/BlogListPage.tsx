@@ -5,7 +5,7 @@ import { isConnected, getConfig, inspectUrl, requestIndexing } from '../lib/goog
 import { countWords, readingTime, formatDate, extractFirstImage } from '../lib/utils'
 import {
   FileText, Plus, Search, Eye, Edit3, Trash2, Calendar, Tag,
-  Clock, ChevronDown, BarChart3, Loader2, CheckCircle2, Zap
+  Clock, ChevronDown, BarChart3, Loader2, CheckCircle2, Zap, RefreshCw
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -284,14 +284,8 @@ function PostRow({ post, deleting, onEdit, onDelete }: {
   const imageSrc = !imgError ? (post.featured_image || extractFirstImage(post.content)) : null
   const postUrl = `https://abial.ai/blog/${post.slug}`
 
-  // Check index status on mount for published posts
-  useEffect(() => {
-    if (post.status === 'published' && post.slug && isConnected('gsc')) {
-      checkIndex()
-    }
-  }, [])
-
-  async function checkIndex() {
+  async function checkIndex(e?: React.MouseEvent) {
+    if (e) e.stopPropagation()
     setIndexStatus('checking')
     try {
       const siteUrl = getConfig('gsc_site_url') || 'https://abial.ai/'
@@ -321,6 +315,18 @@ function PostRow({ post, deleting, onEdit, onDelete }: {
     if (!isConnected('gsc')) return null
 
     switch (indexStatus) {
+      case 'unknown':
+        return (
+          <button
+            onClick={checkIndex}
+            style={{ fontSize:'0.6rem', padding:'2px 7px', borderRadius:99, fontWeight:600,
+              color:'var(--text-muted)', background:'var(--bg-tertiary)', border:'1px solid var(--border)',
+              cursor:'pointer', display:'inline-flex', alignItems:'center', gap:3, transition:'border-color 0.2s' }}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--border-light)')}
+            onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
+            <Search size={8}/> Check Index
+          </button>
+        )
       case 'checking':
         return (
           <span style={{ fontSize:'0.62rem', padding:'2px 6px', borderRadius:99, fontWeight:600,
@@ -360,10 +366,13 @@ function PostRow({ post, deleting, onEdit, onDelete }: {
         )
       case 'error':
         return (
-          <span style={{ fontSize:'0.62rem', padding:'2px 6px', borderRadius:99, fontWeight:600,
-            color:'#94A3B8', background:'hsla(220,13%,69%,0.08)', border:'1px solid hsla(220,13%,69%,0.15)' }}>
-            ? Unknown
-          </span>
+          <button
+            onClick={checkIndex}
+            style={{ fontSize:'0.6rem', padding:'2px 7px', borderRadius:99, fontWeight:600,
+              color:'#94A3B8', background:'hsla(220,13%,69%,0.08)', border:'1px solid hsla(220,13%,69%,0.15)',
+              cursor:'pointer', display:'inline-flex', alignItems:'center', gap:3 }}>
+            <RefreshCw size={8}/> Retry Check
+          </button>
         )
       default:
         return null
