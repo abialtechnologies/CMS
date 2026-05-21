@@ -204,9 +204,14 @@ body {
 .badge-red { background: hsla(0,74%,52%,0.12); color: var(--red); border-color: hsla(0,74%,52%,0.25); }
 
 /* ─── Responsive ─── */
+.lg-hidden {
+  display: none;
+}
+
 @media (max-width: 1024px) {
   .cms-sidebar { transform: translateX(-100%); }
   .cms-sidebar.open { transform: translateX(0); }
-  .cms-main { margin-left: 0; }
+  .cms-main { margin-left: 0; padding-top: 60px; }
   .cms-content { padding: 1rem; }
+  .lg-hidden { display: flex !important; }
 }

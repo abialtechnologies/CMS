@@ -178,7 +178,7 @@ export function Layout() {
       <div className="lg-hidden" style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 35,
         background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)',
-        padding: '0.75rem 1rem', display: 'none', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0.75rem 1rem', alignItems: 'center', justifyContent: 'space-between',
       }}>
         <button className="btn-ghost" onClick={() => setMobileOpen(true)} style={{ padding: 6 }}><Menu size={20} /></button>
         <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>Blog CMS</span>

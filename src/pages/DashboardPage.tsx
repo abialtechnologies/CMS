@@ -201,7 +201,7 @@ export function DashboardPage() {
       </div>
 
       {/* ── Content Stats (always live) ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'1rem', marginBottom:'1.25rem' }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:'1rem', marginBottom:'1.25rem' }}>
         <StatCard icon={FileText}    label="Total Posts"  value={loading?'…':stats.total}      sub="All time"   color="#a855f7"/>
         <StatCard icon={CheckCircle} label="Published"    value={loading?'…':stats.published}   sub="Live posts" color="#22c55e"/>
         <StatCard icon={Clock}       label="Drafts"       value={loading?'…':stats.draft}        sub="In progress" color="#f59e0b"/>
@@ -246,7 +246,7 @@ export function DashboardPage() {
         {gscConnected && !gscLoading && !gscError && gscStats && (
           <>
             {/* KPI cards */}
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'0.875rem', marginBottom:'1.25rem' }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:'0.875rem', marginBottom:'1.25rem' }}>
               <StatCard icon={Eye}              label="Impressions" value={gscStats.impressions.toLocaleString()} sub="Last 90 days" color="#ef4444"/>
               <StatCard icon={MousePointerClick} label="Clicks"      value={gscStats.clicks.toLocaleString()}      sub="Organic"    color="#f97316"/>
               <StatCard icon={TrendingUp}        label="Avg. CTR"    value={`${gscStats.ctr}%`}                     sub="Click-through" color="#22c55e"/>
@@ -331,13 +331,13 @@ export function DashboardPage() {
         {ga4Connected && !ga4Loading && !ga4Error && ga4Stats && (
           <>
             {/* KPI cards */}
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'0.875rem', marginBottom:'1.25rem' }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:'0.875rem', marginBottom:'1.25rem' }}>
               <StatCard icon={Eye}              label="Total Users"    value={ga4Stats.users.toLocaleString()}     sub="Last 90 days" color="#8b5cf6"/>
               <StatCard icon={MousePointerClick} label="Sessions"      value={ga4Stats.sessions.toLocaleString()} sub="All devices"  color="#f97316"/>
               <StatCard icon={TrendingUp}        label="Page Views"    value={ga4Stats.pageViews.toLocaleString()} sub="Total views"  color="#06b6d4"/>
             </div>
 
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 260px', gap:'1rem' }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(260px, 1fr))', gap:'1rem' }}>
               {/* Users Sparkline */}
               <div>
                 {ga4Chart.length > 0 && (
