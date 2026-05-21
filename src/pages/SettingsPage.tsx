@@ -316,7 +316,7 @@ function IntegrationsSection() {
         </div>
         <div style={{ background: 'hsla(220,15%,14%,0.8)', border: '1px solid var(--border)', borderRadius: 10, padding: '1rem', marginBottom: 10 }}>
           <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.875rem', lineHeight: 1.6 }}>
-            Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none' }}>Google Cloud Console <ExternalLink size={10} style={{ verticalAlign: 'middle' }}/></a> → Create OAuth 2.0 Client ID → Web Application → Add <code style={{ background: 'var(--bg-tertiary)', padding: '1px 5px', borderRadius: 3 }}>http://localhost:5174/oauth-callback</code> as redirect URI.
+            Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none' }}>Google Cloud Console <ExternalLink size={10} style={{ verticalAlign: 'middle' }}/></a> → Create OAuth 2.0 Client ID → Web Application → Add <code style={{ background: 'var(--bg-tertiary)', padding: '1px 5px', borderRadius: 3 }}>{window.location.origin}/oauth-callback</code> as redirect URI.
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
             <div>
