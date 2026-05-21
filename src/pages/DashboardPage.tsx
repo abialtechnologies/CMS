@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { TrendingUp, Eye, MousePointerClick, Search, FileText, CheckCircle, Clock, Tag, ArrowUpRight, Globe, RefreshCw, Monitor, Smartphone, Tablet, Link2, AlertCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { isConnected, getConfig, fetchGscData } from '../lib/googleAuth'
+import { isConnected, getConfig, fetchGscData, fetchGa4Data } from '../lib/googleAuth'
 
 interface PostStats { total: number; published: number; draft: number; categories: number }
 interface TopPost   { id: string; title: string; slug: string; published_at: string; category_name: string | null }
 interface GscStats  { impressions: number; clicks: number; ctr: number; position: number }
 interface GscRow    { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }
+interface Ga4Stats  { users: number; sessions: number; pageViews: number }
+interface DeviceSplit { desktop: number; mobile: number; tablet: number }
 
 // ── "Not Connected" empty state ───────────────────────────────────────────────
 function NotConnectedState({ service }: { service: 'gsc' | 'ga4' }) {
@@ -99,7 +101,14 @@ export function DashboardPage() {
   const [gscLoading, setGscLoading] = useState(gscConnected)
   const [gscError, setGscError]   = useState('')
 
-  useEffect(() => { loadContent(); if (gscConnected) loadGsc() }, [])
+  // GA4 state
+  const [ga4Stats, setGa4Stats] = useState<Ga4Stats|null>(null)
+  const [ga4Devices, setGa4Devices] = useState<DeviceSplit>({ desktop:0, mobile:0, tablet:0 })
+  const [ga4Chart, setGa4Chart] = useState<number[]>([])
+  const [ga4Loading, setGa4Loading] = useState(ga4Connected)
+  const [ga4Error, setGa4Error] = useState('')
+
+  useEffect(() => { loadContent(); if (gscConnected) loadGsc(); if (ga4Connected) loadGa4() }, [])
 
   const loadContent = async () => {
     setLoading(true)
@@ -131,6 +140,52 @@ export function DashboardPage() {
     setGscLoading(false)
   }
 
+  const loadGa4 = async () => {
+    setGa4Loading(true); setGa4Error('')
+    try {
+      const propId = getConfig('ga4_property_id')
+      if (!propId) throw new Error('GA4 Property ID not set')
+      const data = await fetchGa4Data(propId)
+      const rows = data.rows || []
+
+      // Aggregate totals
+      let totalUsers = 0, totalSessions = 0, totalPageViews = 0
+      let deviceCounts: Record<string, number> = { desktop: 0, mobile: 0, tablet: 0 }
+      let dailyUsers: Record<string, number> = {}
+
+      rows.forEach((row: any) => {
+        const date = row.dimensionValues?.[0]?.value || ''
+        const device = (row.dimensionValues?.[1]?.value || 'desktop').toLowerCase()
+        const users = parseInt(row.metricValues?.[0]?.value || '0')
+        const sessions = parseInt(row.metricValues?.[1]?.value || '0')
+        const views = parseInt(row.metricValues?.[2]?.value || '0')
+
+        totalUsers += users
+        totalSessions += sessions
+        totalPageViews += views
+
+        if (device in deviceCounts) deviceCounts[device] += sessions
+        else deviceCounts['desktop'] += sessions
+
+        dailyUsers[date] = (dailyUsers[date] || 0) + users
+      })
+
+      setGa4Stats({ users: totalUsers, sessions: totalSessions, pageViews: totalPageViews })
+
+      const totalDeviceSessions = deviceCounts.desktop + deviceCounts.mobile + deviceCounts.tablet || 1
+      setGa4Devices({
+        desktop: Math.round((deviceCounts.desktop / totalDeviceSessions) * 100),
+        mobile: Math.round((deviceCounts.mobile / totalDeviceSessions) * 100),
+        tablet: Math.round((deviceCounts.tablet / totalDeviceSessions) * 100),
+      })
+
+      // Sort dates and get last 30 days for chart
+      const sortedDates = Object.keys(dailyUsers).sort()
+      setGa4Chart(sortedDates.slice(-30).map(d => dailyUsers[d]))
+    } catch(e:any) { setGa4Error(e.message||'Failed to load GA4 data') }
+    setGa4Loading(false)
+  }
+
   return (
     <div className="animate-fade-in">
 
@@ -140,7 +195,7 @@ export function DashboardPage() {
           <h1 style={{ fontSize:'1.35rem', fontWeight:800, color:'var(--text-primary)', marginBottom:2 }}>Dashboard</h1>
           <p style={{ fontSize:'0.8rem', color:'var(--text-muted)' }}>Real-time site performance & SEO data</p>
         </div>
-        <button onClick={() => { loadContent(); if(gscConnected) loadGsc() }} className="btn btn-ghost" style={{ padding:'0.4rem 0.75rem', fontSize:'0.78rem', display:'flex', alignItems:'center', gap:6 }}>
+        <button onClick={() => { loadContent(); if(gscConnected) loadGsc(); if(ga4Connected) loadGa4() }} className="btn btn-ghost" style={{ padding:'0.4rem 0.75rem', fontSize:'0.78rem', display:'flex', alignItems:'center', gap:6 }}>
           <RefreshCw size={13}/> Refresh
         </button>
       </div>
@@ -240,33 +295,69 @@ export function DashboardPage() {
 
       {/* ── Google Analytics 4 ── */}
       <div className="card" style={{ padding:'1.25rem', marginBottom:'1.25rem' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom: ga4Connected ? '1rem' : 0 }}>
-          <Globe size={16} color="var(--accent)"/>
-          <h2 style={{ fontSize:'0.92rem', fontWeight:700, color:'var(--text-primary)' }}>Google Analytics 4</h2>
-          <span style={{ fontSize:'0.68rem', padding:'1px 7px', borderRadius:99, fontWeight:600,
-            color: ga4Connected ? '#22c55e' : '#ef4444',
-            background: ga4Connected ? 'hsla(142,76%,36%,0.12)' : 'hsla(0,80%,55%,0.08)',
-            border: `1px solid ${ga4Connected ? 'hsla(142,76%,36%,0.2)' : 'hsla(0,80%,55%,0.2)'}`,
-          }}>
-            {ga4Connected ? '● Live Data' : '● Not Connected'}
-          </span>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: ga4Connected ? '1rem' : 0 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <Globe size={16} color="var(--accent)"/>
+            <h2 style={{ fontSize:'0.92rem', fontWeight:700, color:'var(--text-primary)' }}>Google Analytics 4</h2>
+            <span style={{ fontSize:'0.68rem', padding:'1px 7px', borderRadius:99, fontWeight:600,
+              color: ga4Connected ? '#22c55e' : '#ef4444',
+              background: ga4Connected ? 'hsla(142,76%,36%,0.12)' : 'hsla(0,80%,55%,0.08)',
+              border: `1px solid ${ga4Connected ? 'hsla(142,76%,36%,0.2)' : 'hsla(0,80%,55%,0.2)'}`,
+            }}>
+              {ga4Connected ? '● Live Data' : '● Not Connected'}
+            </span>
+          </div>
+          {ga4Connected && (
+            <button onClick={loadGa4} className="btn btn-ghost" style={{ fontSize:'0.72rem', padding:'0.3rem 0.6rem', display:'flex', alignItems:'center', gap:4 }}>
+              <RefreshCw size={11}/> Refresh
+            </button>
+          )}
         </div>
-        {!ga4Connected
-          ? <NotConnectedState service="ga4"/>
-          : (
+
+        {!ga4Connected && <NotConnectedState service="ga4"/>}
+
+        {ga4Connected && ga4Loading && (
+          <div style={{ textAlign:'center', padding:'2rem', color:'var(--text-muted)', fontSize:'0.82rem' }}>Fetching Analytics data…</div>
+        )}
+
+        {ga4Connected && ga4Error && (
+          <div style={{ display:'flex', alignItems:'center', gap:8, padding:'0.875rem 1rem', background:'hsla(0,80%,55%,0.06)', borderRadius:8, border:'1px solid hsla(0,80%,55%,0.15)' }}>
+            <AlertCircle size={14} color="#ef4444" style={{ flexShrink:0 }}/>
+            <span style={{ fontSize:'0.8rem', color:'#ef4444' }}>{ga4Error} — </span>
+            <a href="/settings" style={{ fontSize:'0.8rem', color:'var(--accent)', textDecoration:'none' }}>Re-connect in Settings</a>
+          </div>
+        )}
+
+        {ga4Connected && !ga4Loading && !ga4Error && ga4Stats && (
+          <>
+            {/* KPI cards */}
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'0.875rem', marginBottom:'1.25rem' }}>
+              <StatCard icon={Eye}              label="Total Users"    value={ga4Stats.users.toLocaleString()}     sub="Last 90 days" color="#8b5cf6"/>
+              <StatCard icon={MousePointerClick} label="Sessions"      value={ga4Stats.sessions.toLocaleString()} sub="All devices"  color="#f97316"/>
+              <StatCard icon={TrendingUp}        label="Page Views"    value={ga4Stats.pageViews.toLocaleString()} sub="Total views"  color="#06b6d4"/>
+            </div>
+
             <div style={{ display:'grid', gridTemplateColumns:'1fr 260px', gap:'1rem' }}>
-              <div style={{ textAlign:'center', padding:'2rem', color:'var(--text-muted)', fontSize:'0.82rem' }}>
-                GA4 data loading… *(token valid for 1 hour)*
+              {/* Users Sparkline */}
+              <div>
+                {ga4Chart.length > 0 && (
+                  <>
+                    <div style={{ fontSize:'0.73rem', color:'var(--text-muted)', marginBottom:6, fontWeight:500 }}>Users — Last 30 days</div>
+                    <Sparkline data={ga4Chart} color="#8b5cf6"/>
+                  </>
+                )}
               </div>
+
+              {/* Device Split */}
               <div>
                 <div style={{ fontSize:'0.78rem', fontWeight:600, color:'var(--text-secondary)', marginBottom:'0.875rem' }}>Device Split</div>
-                <ProgressBar label="Desktop" pct={58} color="#ef4444" icon={Monitor}/>
-                <ProgressBar label="Mobile"  pct={34} color="#f97316" icon={Smartphone}/>
-                <ProgressBar label="Tablet"  pct={8}  color="#3b82f6" icon={Tablet}/>
+                <ProgressBar label="Desktop" pct={ga4Devices.desktop} color="#8b5cf6" icon={Monitor}/>
+                <ProgressBar label="Mobile"  pct={ga4Devices.mobile}  color="#f97316" icon={Smartphone}/>
+                <ProgressBar label="Tablet"  pct={ga4Devices.tablet}  color="#3b82f6" icon={Tablet}/>
               </div>
             </div>
-          )
-        }
+          </>
+        )}
       </div>
 
       {/* ── Recent Posts ── */}
