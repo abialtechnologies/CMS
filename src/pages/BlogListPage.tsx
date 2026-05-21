@@ -1,10 +1,11 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { isConnected, getConfig, inspectUrl, requestIndexing } from '../lib/googleAuth'
 import { countWords, readingTime, formatDate, extractFirstImage } from '../lib/utils'
 import {
   FileText, Plus, Search, Eye, Edit3, Trash2, Calendar, Tag,
-  Clock, ChevronDown, BarChart3, Loader2
+  Clock, ChevronDown, BarChart3, Loader2, CheckCircle2, Zap
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -277,8 +278,97 @@ function PostRow({ post, deleting, onEdit, onDelete }: {
   const wc = countWords(post.content || '')
   const rt = readingTime(post.content || '')
   const [imgError, setImgError] = useState(false)
+  const [indexStatus, setIndexStatus] = useState<'unknown'|'checking'|'indexed'|'not_indexed'|'error'>('unknown')
+  const [indexing, setIndexing] = useState(false)
 
   const imageSrc = !imgError ? (post.featured_image || extractFirstImage(post.content)) : null
+  const postUrl = `https://abial.ai/blog/${post.slug}`
+
+  // Check index status on mount for published posts
+  useEffect(() => {
+    if (post.status === 'published' && post.slug && isConnected('gsc')) {
+      checkIndex()
+    }
+  }, [])
+
+  async function checkIndex() {
+    setIndexStatus('checking')
+    try {
+      const siteUrl = getConfig('gsc_site_url') || 'https://abial.ai/'
+      const result = await inspectUrl(postUrl, siteUrl)
+      setIndexStatus(result.isIndexed ? 'indexed' : 'not_indexed')
+    } catch {
+      setIndexStatus('error')
+    }
+  }
+
+  async function handleRequestIndex(e: React.MouseEvent) {
+    e.stopPropagation()
+    setIndexing(true)
+    try {
+      await requestIndexing(postUrl)
+      toast.success('Indexing request sent to Google!')
+      // Recheck after a short delay
+      setTimeout(() => checkIndex(), 3000)
+    } catch (err: any) {
+      toast.error(err.message || 'Indexing request failed')
+    }
+    setIndexing(false)
+  }
+
+  const indexBadge = () => {
+    if (post.status !== 'published') return null
+    if (!isConnected('gsc')) return null
+
+    switch (indexStatus) {
+      case 'checking':
+        return (
+          <span style={{ fontSize:'0.62rem', padding:'2px 6px', borderRadius:99, fontWeight:600,
+            color:'#94A3B8', background:'hsla(220,13%,69%,0.1)', border:'1px solid hsla(220,13%,69%,0.2)',
+            display:'inline-flex', alignItems:'center', gap:3 }}>
+            <Loader2 size={9} style={{ animation:'spin 1s linear infinite' }}/> Checking
+          </span>
+        )
+      case 'indexed':
+        return (
+          <span style={{ fontSize:'0.62rem', padding:'2px 6px', borderRadius:99, fontWeight:600,
+            color:'#22c55e', background:'hsla(142,76%,36%,0.1)', border:'1px solid hsla(142,76%,36%,0.2)',
+            display:'inline-flex', alignItems:'center', gap:3 }}>
+            <CheckCircle2 size={9}/> Indexed
+          </span>
+        )
+      case 'not_indexed':
+        return (
+          <span style={{ display:'inline-flex', alignItems:'center', gap:4 }}>
+            <span style={{ fontSize:'0.62rem', padding:'2px 6px', borderRadius:99, fontWeight:600,
+              color:'#f59e0b', background:'hsla(38,92%,50%,0.1)', border:'1px solid hsla(38,92%,50%,0.2)' }}>
+              Not Indexed
+            </span>
+            <button
+              onClick={handleRequestIndex}
+              disabled={indexing}
+              style={{ fontSize:'0.6rem', padding:'2px 7px', borderRadius:99, fontWeight:700,
+                color:'white', background:'linear-gradient(135deg,#6366F1,#8B5CF6)', border:'none',
+                cursor:'pointer', display:'inline-flex', alignItems:'center', gap:3,
+                opacity: indexing ? 0.6 : 1, transition:'opacity 0.2s' }}>
+              {indexing
+                ? <><Loader2 size={8} style={{ animation:'spin 1s linear infinite' }}/> Sending…</>
+                : <><Zap size={8}/> Index Now</>
+              }
+            </button>
+          </span>
+        )
+      case 'error':
+        return (
+          <span style={{ fontSize:'0.62rem', padding:'2px 6px', borderRadius:99, fontWeight:600,
+            color:'#94A3B8', background:'hsla(220,13%,69%,0.08)', border:'1px solid hsla(220,13%,69%,0.15)' }}>
+            ? Unknown
+          </span>
+        )
+      default:
+        return null
+    }
+  }
 
   return (
     <div
@@ -306,11 +396,12 @@ function PostRow({ post, deleting, onEdit, onDelete }: {
 
         {/* Info */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {post.title || 'Untitled'}
             </span>
             <span className={`badge ${statusBadge[post.status] || 'badge-yellow'}`}>{post.status}</span>
+            {indexBadge()}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 6, fontSize: '0.7rem', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
             {post.created_at && (

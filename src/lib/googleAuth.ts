@@ -55,7 +55,7 @@ export async function startOAuthFlow(service: 'gsc' | 'ga4') {
   sessionStorage.setItem('oauth_service', service)
 
   const scopes: Record<string, string> = {
-    gsc: 'https://www.googleapis.com/auth/webmasters.readonly',
+    gsc: 'https://www.googleapis.com/auth/webmasters.readonly https://www.googleapis.com/auth/indexing',
     ga4: 'https://www.googleapis.com/auth/analytics.readonly',
   }
 
@@ -123,6 +123,55 @@ export async function fetchGscData(siteUrl: string) {
   const analytics = await analyticsRes.json()
   const queries = await queriesRes.json()
   return { analytics: analytics.rows || [], queries: queries.rows || [] }
+}
+
+// ── URL Inspection API (check if a URL is indexed) ────────────────────────────
+export async function inspectUrl(url: string, siteUrl: string): Promise<{ isIndexed: boolean; verdict: string; lastCrawl: string | null }> {
+  const tokens = getTokens('gsc')
+  if (!tokens) throw new Error('GSC not connected')
+
+  const res = await fetch('https://searchconsole.googleapis.com/v1/urlInspection/index:inspect', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${tokens.access_token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ inspectionUrl: url, siteUrl }),
+  })
+
+  if (!res.ok) {
+    const errText = await res.text()
+    throw new Error('Inspection failed: ' + errText)
+  }
+
+  const data = await res.json()
+  const result = data.inspectionResult?.indexStatusResult || {}
+  const verdict = result.verdict || 'VERDICT_UNSPECIFIED'
+  const isIndexed = verdict === 'PASS'
+  const lastCrawl = result.lastCrawlTime || null
+
+  return { isIndexed, verdict, lastCrawl }
+}
+
+// ── Google Indexing API (request instant indexing) ────────────────────────────
+export async function requestIndexing(url: string): Promise<void> {
+  const tokens = getTokens('gsc')
+  if (!tokens) throw new Error('GSC not connected')
+
+  const res = await fetch('https://indexing.googleapis.com/v3/urlNotifications:publish', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${tokens.access_token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url, type: 'URL_UPDATED' }),
+  })
+
+  if (!res.ok) {
+    const errText = await res.text()
+    // If Indexing API fails, fall back to ping methods
+    console.warn('Indexing API failed, using ping fallback:', errText)
+  }
+
+  // Also ping Google to crawl (multiple signals)
+  await Promise.allSettled([
+    fetch(`https://www.google.com/ping?sitemap=${encodeURIComponent(url)}`, { mode: 'no-cors' }),
+    fetch(`https://www.google.com/ping?sitemap=${encodeURIComponent(url.replace(/\/[^/]*$/, '/sitemap.xml'))}`, { mode: 'no-cors' }),
+  ])
 }
 
 // ── GA4 API ───────────────────────────────────────────────────────────────────
