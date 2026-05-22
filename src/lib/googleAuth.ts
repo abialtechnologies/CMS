@@ -100,7 +100,7 @@ export async function startOAuthFlow(service: 'gsc' | 'ga4') {
   sessionStorage.setItem('oauth_service', service)
 
   const scopes: Record<string, string> = {
-    gsc: 'https://www.googleapis.com/auth/webmasters.readonly https://www.googleapis.com/auth/indexing',
+    gsc: 'https://www.googleapis.com/auth/webmasters.readonly',
     ga4: 'https://www.googleapis.com/auth/analytics.readonly',
   }
 
