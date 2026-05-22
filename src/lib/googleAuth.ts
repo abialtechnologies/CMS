@@ -32,9 +32,54 @@ export function clearTokens(service: 'gsc' | 'ga4') {
 export function isConnected(service: 'gsc' | 'ga4'): boolean {
   const t = getTokens(service)
   if (!t) return false
-  // Check expiry (access token valid for 1 hour)
+  if (t.refresh_token) return true
   const age = (Date.now() - (t.saved_at || 0)) / 1000
   return age < 3500
+}
+
+export async function refreshGoogleToken(service: 'gsc' | 'ga4') {
+  const tokens = getTokens(service)
+  if (!tokens || !tokens.refresh_token) throw new Error('No refresh token available')
+
+  const clientId = getConfig('client_id')
+  const clientSecret = getConfig('client_secret')
+
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: tokens.refresh_token,
+      grant_type: 'refresh_token',
+    }),
+  })
+  
+  if (!res.ok) {
+    clearTokens(service)
+    throw new Error('Failed to refresh token')
+  }
+  
+  const newTokens = await res.json()
+  if (!newTokens.refresh_token) newTokens.refresh_token = tokens.refresh_token
+  
+  saveTokens(service, newTokens)
+  return newTokens
+}
+
+export async function getValidTokens(service: 'gsc' | 'ga4') {
+  const t = getTokens(service)
+  if (!t) return null
+  
+  const age = (Date.now() - (t.saved_at || 0)) / 1000
+  if (age > 3500 && t.refresh_token) {
+    try {
+      return await refreshGoogleToken(service)
+    } catch {
+      return null
+    }
+  }
+  return t
 }
 
 // ── Config Storage ─────────────────────────────────────────────────────────────
@@ -100,7 +145,7 @@ export async function exchangeCode(code: string, service: 'gsc' | 'ga4') {
 
 // ── GSC API ───────────────────────────────────────────────────────────────────
 export async function fetchGscData(siteUrl: string) {
-  const tokens = getTokens('gsc')
+  const tokens = await getValidTokens('gsc')
   if (!tokens) throw new Error('Not connected')
 
   const endDate = new Date().toISOString().split('T')[0]
@@ -126,7 +171,7 @@ export async function fetchGscData(siteUrl: string) {
 }
 
 export async function fetchSeoReportData(siteUrl: string) {
-  const tokens = getTokens('gsc')
+  const tokens = await getValidTokens('gsc')
   if (!tokens) throw new Error('Not connected')
 
   const endDate = new Date().toISOString().split('T')[0]
@@ -158,7 +203,7 @@ export async function fetchSeoReportData(siteUrl: string) {
 
 // ── URL Inspection API (check if a URL is indexed) ────────────────────────────
 export async function inspectUrl(url: string, siteUrl: string): Promise<{ isIndexed: boolean; verdict: string; lastCrawl: string | null }> {
-  const tokens = getTokens('gsc')
+  const tokens = await getValidTokens('gsc')
   if (!tokens) throw new Error('GSC not connected')
 
   const res = await fetch('https://searchconsole.googleapis.com/v1/urlInspection/index:inspect', {
@@ -183,7 +228,7 @@ export async function inspectUrl(url: string, siteUrl: string): Promise<{ isInde
 
 // ── Google Indexing API (request instant indexing) ────────────────────────────
 export async function requestIndexing(url: string): Promise<void> {
-  const tokens = getTokens('gsc')
+  const tokens = await getValidTokens('gsc')
   if (!tokens) throw new Error('GSC not connected')
 
   const res = await fetch('https://indexing.googleapis.com/v3/urlNotifications:publish', {
@@ -207,7 +252,7 @@ export async function requestIndexing(url: string): Promise<void> {
 
 // ── GA4 API ───────────────────────────────────────────────────────────────────
 export async function fetchGa4Data(propertyId: string) {
-  const tokens = getTokens('ga4')
+  const tokens = await getValidTokens('ga4')
   if (!tokens) throw new Error('Not connected')
 
   const endDate = 'today'
